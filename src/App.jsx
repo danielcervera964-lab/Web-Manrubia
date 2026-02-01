@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
 
 export default function WebManrubia() {
   const [telefono, setTelefono] = useState('');
@@ -23,13 +24,42 @@ export default function WebManrubia() {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const buscarBici = () => {
+  const limpiarTelefono = (tel) => {
+    let limpio = tel.replace(/[\s\-\+\(\)]/g, '');
+    if (limpio.startsWith('34') && limpio.length > 9) {
+      limpio = limpio.substring(2);
+    }
+    return limpio;
+  };
+
+  const buscarBici = async () => {
     if (!telefono) return;
     setBuscando(true);
-    setTimeout(() => {
-      setResultado({ encontrada: true, estado: 'curso', trabajo: 'Revisión completa' });
-      setBuscando(false);
-    }, 1000);
+    setResultado(null);
+
+    const telefonoLimpio = limpiarTelefono(telefono);
+
+    const { data, error } = await supabase
+      .from('bicis')
+      .select('*')
+      .ilike('telefono', `%${telefonoLimpio}%`)
+      .order('fecha', { ascending: false });
+
+    if (error) {
+      setResultado({ encontrada: false });
+    } else if (data && data.length > 0) {
+      const bici = data[0];
+      setResultado({
+        encontrada: true,
+        estado: bici.estado,
+        trabajo: bici.trabajo,
+        precio: bici.precio
+      });
+    } else {
+      setResultado({ encontrada: false });
+    }
+
+    setBuscando(false);
   };
 
   const servicios = [
@@ -147,8 +177,13 @@ export default function WebManrubia() {
               <button onClick={buscarBici} disabled={!telefono || buscando} className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-4 rounded-xl font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed">{buscando ? 'Buscando...' : 'Consultar'}</button>
             </div>
             {resultado && (
-              <div className={`mt-8 p-6 rounded-2xl max-w-xl mx-auto ${resultado.estado === 'curso' ? 'bg-amber-50 border-2 border-amber-200' : 'bg-green-50 border-2 border-green-200'}`}>
-                {resultado.estado === 'curso' ? (
+              <div className={`mt-8 p-6 rounded-2xl max-w-xl mx-auto ${resultado.encontrada ? (resultado.estado === 'curso' ? 'bg-amber-50 border-2 border-amber-200' : 'bg-green-50 border-2 border-green-200') : 'bg-gray-50 border-2 border-gray-200'}`}>
+                {!resultado.encontrada ? (
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center flex-shrink-0"><span className="text-2xl">🔍</span></div>
+                    <div><p className="font-bold text-gray-800 text-lg">No encontramos ninguna bici</p><p className="text-gray-600 mt-1">No hay ninguna bicicleta registrada con este teléfono. Si acabas de dejarla, puede que aún no esté en el sistema.</p></div>
+                  </div>
+                ) : resultado.estado === 'curso' ? (
                   <div className="flex items-start gap-4">
                     <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center flex-shrink-0"><div className="w-6 h-6 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div></div>
                     <div><p className="font-bold text-amber-800 text-lg">En proceso</p><p className="text-amber-700 mt-1">Trabajo actual: {resultado.trabajo}</p><p className="text-amber-600 text-sm mt-3">Te notificaremos por WhatsApp cuando esté lista.</p></div>
@@ -156,7 +191,7 @@ export default function WebManrubia() {
                 ) : (
                   <div className="flex items-start gap-4">
                     <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center flex-shrink-0"><svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg></div>
-                    <div><p className="font-bold text-green-800 text-lg">Lista para recoger</p><p className="text-green-700 mt-1">Tu bicicleta está preparada.</p></div>
+                    <div><p className="font-bold text-green-800 text-lg">¡Lista para recoger!</p><p className="text-green-700 mt-1">Tu bicicleta está preparada. Total: <strong>{resultado.precio}€</strong></p></div>
                   </div>
                 )}
               </div>
