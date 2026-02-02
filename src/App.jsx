@@ -39,10 +39,11 @@ export default function WebManrubia() {
 
     const telefonoLimpio = limpiarTelefono(telefono);
 
+    // Buscar por teléfono O por nombre
     const { data, error } = await supabase
       .from('bicis')
       .select('*')
-      .ilike('telefono', `%${telefonoLimpio}%`)
+      .or(`telefono.ilike.%${telefonoLimpio}%,nombre.ilike.%${telefono}%`)
       .order('fecha', { ascending: false });
 
     if (error) {
@@ -170,11 +171,11 @@ export default function WebManrubia() {
           <div className="text-center mb-12">
             <span className="inline-block bg-orange-100 text-orange-600 px-4 py-1 rounded-full text-sm font-semibold mb-4">Seguimiento en tiempo real</span>
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">¿Está tu bicicleta lista?</h2>
-            <p className="text-gray-600 max-w-xl mx-auto">Introduce tu número de teléfono y consulta el estado de tu reparación al instante</p>
+            <p className="text-gray-600 max-w-xl mx-auto">Introduce tu nombre o teléfono y consulta el estado de tu reparación al instante</p>
           </div>
           <div className="bg-white p-8 sm:p-12 rounded-3xl shadow-xl">
             <div className="flex flex-col sm:flex-row gap-4 max-w-xl mx-auto">
-              <input type="tel" placeholder="Tu número de teléfono" className="flex-1 p-4 rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:outline-none text-lg" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
+              <input type="text" placeholder="Tu nombre o teléfono" className="flex-1 p-4 rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:outline-none text-lg" value={telefono} onChange={(e) => setTelefono(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && buscarBici()} />
               <button onClick={buscarBici} disabled={!telefono || buscando} className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-4 rounded-xl font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed">{buscando ? 'Buscando...' : 'Consultar'}</button>
             </div>
             {resultado && (
@@ -182,7 +183,7 @@ export default function WebManrubia() {
                 {!resultado.encontrada ? (
                   <div className="flex items-start gap-4">
                     <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center flex-shrink-0"><span className="text-2xl">🔍</span></div>
-                    <div><p className="font-bold text-gray-800 text-lg">No encontramos ninguna bici</p><p className="text-gray-600 mt-1">No hay ninguna bicicleta registrada con este teléfono. Si acabas de dejarla, puede que aún no esté en el sistema.</p></div>
+                    <div><p className="font-bold text-gray-800 text-lg">No encontramos ninguna bici</p><p className="text-gray-600 mt-1">No hay ninguna bicicleta registrada con este nombre o teléfono. Si acabas de dejarla, puede que aún no esté en el sistema.</p></div>
                   </div>
                 ) : resultado.estado === 'curso' ? (
                   <div className="flex items-start gap-4">
